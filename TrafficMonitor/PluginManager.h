@@ -3,6 +3,7 @@
 #include <map>
 #include "TaskbarItemOrderHelper.h"
 #include <functional>
+#include <afxmt.h>
 
 typedef ITMPlugin* (*pfTMPluginGetInstance)();
 
@@ -36,6 +37,12 @@ public:
     CPluginManager();
     ~CPluginManager();
     void LoadPlugins();
+    void ReloadPlugins();
+    bool PluginFilesChanged();
+    bool CheckAndReloadPlugins();
+
+    // Lock used to synchronize plugin reload with monitor thread.
+    CCriticalSection& GetCriticalSection() { return m_cs; }
 
     const std::vector<IPluginItem*>& GetPluginItems() const;
     const std::vector<PluginInfo>& GetPlugins() const;
@@ -60,10 +67,13 @@ public:
 private:
     static void ReplacePluginDrawTextFunction(HMODULE plgin_dll_module) noexcept;
     static void ReplaceMfcDrawTextFunction() noexcept;
+    void UpdatePluginFileState();
 
 private:
     std::vector<IPluginItem*> m_plugins;
     std::vector<PluginInfo> m_modules;
     std::set<CommonDisplayItem> m_all_display_items_with_plugins;   //包含插件在内的所有任务栏显示项目
     std::map<IPluginItem*, ITMPlugin*> m_plguin_item_map;          //用于根据插件项目查找对应插件的map
+    std::map<std::wstring, std::pair<__int64, __int64>> m_plugin_file_state;  //插件文件状态（大小与修改时间）
+    CCriticalSection m_cs;
 };

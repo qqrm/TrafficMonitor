@@ -1553,6 +1553,7 @@ void CTrafficMonitorDlg::DoMonitorAcquisition()
 #endif
 
     //通知插件获取数据，以及向插件传递监控数据
+    CSingleLock plugin_lock(&theApp.m_plugins.GetCriticalSection(), TRUE);
     for (const auto& plugin_info : theApp.m_plugins.GetPlugins())
     {
         if (plugin_info.plugin != nullptr)
@@ -1730,6 +1731,21 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
                 theApp.SaveConfig();
                 last_pos_x = theApp.m_cfg_data.m_position_x;
                 last_pos_y = theApp.m_cfg_data.m_position_y;
+            }
+        }
+
+        //每隔60秒自动检测 plugins 目录中的插件文件是否发生变化，如有变化则自动重新加载插件（用于调试/热更新）
+        if (m_timer_cnt % 60 == 0)
+        {
+            if (theApp.m_plugins.CheckAndReloadPlugins())
+            {
+                if (m_tBarDlg != nullptr)
+                {
+                    m_tBarDlg->CalculateWindowSize();
+                    m_tBarDlg->Invalidate(FALSE);
+                }
+                SetItemPosition();
+                Invalidate(FALSE);
             }
         }
 

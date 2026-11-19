@@ -133,6 +133,9 @@ void CPluginManager::LoadPlugins()
     {
         m_all_display_items_with_plugins.insert(display_item);
     }
+
+    //记录插件文件状态，用于后续的自动重载检测
+    UpdatePluginFileState();
 }
 
 const std::vector<IPluginItem*>& CPluginManager::GetPluginItems() const
@@ -472,4 +475,84 @@ void CPluginManager::ReplaceMfcDrawTextFunction() noexcept
         ReplacePluginDrawTextFunction(mfc_module);
         ::FreeLibrary(mfc_module);
     }
+}
+
+void CPluginManager::UpdatePluginFileState()
+{
+    m_plugin_file_state.clear();
+    wstring plugin_dir = CCommon::GetModuleDir() + L"plugins";
+    vector<wstring> files;
+    CCommon::GetFiles((plugin_dir + L"\\*.dll").c_str(), files);
+    for (const auto& file : files)
+    {
+        wstring name = file;
+        if (!name.empty() && (name[0] == L'\\' || name[0] == L'/'))
+            name = name.substr(1);
+        wstring path = plugin_dir + L"\\" + name;
+        WIN32_FILE_ATTRIBUTE_DATA data{};
+        if (GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data))
+        {
+            __int64 size = ((__int64)data.nFileSizeHigh << 32) | data.nFileSizeLow;
+            __int64 mtime = ((__int64)data.ftLastWriteTime.dwHighDateTime << 32) | data.ftLastWriteTime.dwLowDateTime;
+            m_plugin_file_state[path] = std::make_pair(size, mtime);
+        }
+    }
+}
+
+bool CPluginManager::PluginFilesChanged()
+{
+    CSingleLock lock(&m_cs, TRUE);
+    wstring plugin_dir = CCommon::GetModuleDir() + L"plugins";
+    vector<wstring> files;
+    CCommon::GetFiles((plugin_dir + L"\\*.dll").c_str(), files);
+    std::map<std::wstring, std::pair<__int64, __int64>> current;
+    for (const auto& file : files)
+    {
+        wstring name = file;
+        if (!name.empty() && (name[0] == L'\\' || name[0] == L'/'))
+            name = name.substr(1);
+        wstring path = plugin_dir + L"\\" + name;
+        WIN32_FILE_ATTRIBUTE_DATA data{};
+        if (GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data))
+        {
+            __int64 size = ((__int64)data.nFileSizeHigh << 32) | data.nFileSizeLow;
+            __int64 mtime = ((__int64)data.ftLastWriteTime.dwHighDateTime << 32) | data.ftLastWriteTime.dwLowDateTime;
+            current[path] = std::make_pair(size, mtime);
+        }
+    }
+    return current != m_plugin_file_state;
+}
+
+void CPluginManager::ReloadPlugins()
+{
+    CSingleLock lock(&m_cs, TRUE);
+    //卸载已有插件
+    for (const auto& m : m_modules)
+    {
+        if (m.plugin_module)
+            FreeLibrary(m.plugin_module);
+    }
+    m_modules.clear();
+    m_plugins.clear();
+    m_plguin_item_map.clear();
+    m_all_display_items_with_plugins.clear();
+
+    //重新加载插件（LoadPlugins 会重建内部结构）
+    // temporarily unlock? LoadPlugins may trigger? keep lock
+    // But LoadPlugins calls UpdatePluginFileState at end.
+    // We need call LoadPlugins; it doesn't lock.
+    // However, LoadPlugins is not reentrant; fine.
+    // To avoid holding lock during plugin init callbacks? keep for safety.
+    // Actually LoadPlugins calls UpdatePluginFileState which doesn't lock (already locked) -> deadlock if it locks. We made UpdatePluginFileState not lock. Good.
+    LoadPlugins();
+
+    CCommon::WriteLog(L"Plugins reloaded automatically.", theApp.m_log_path.c_str());
+}
+
+bool CPluginManager::CheckAndReloadPlugins()
+{
+    if (!PluginFilesChanged())
+        return false;
+    ReloadPlugins();
+    return true;
 }
