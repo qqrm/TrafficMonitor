@@ -1741,6 +1741,7 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
             {
                 if (m_tBarDlg != nullptr)
                 {
+                    m_tBarDlg->InvalidatePluginPointers();
                     m_tBarDlg->CalculateWindowSize();
                     m_tBarDlg->Invalidate(FALSE);
                 }

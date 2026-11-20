@@ -204,6 +204,7 @@ public:
     static bool IsShowNetSpeed();
 
     CommonDisplayItem GetClickedItem() const { return m_clicked_item; }
+    void InvalidatePluginPointers() { m_clicked_item = TDI_UP; }
 
     //是否允许“任务栏窗口靠近图标而不是任务栏的两侧”选项
     //taskbar_wnd_on_left: 任务栏窗口是否在任务栏左侧
