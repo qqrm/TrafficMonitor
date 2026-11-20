@@ -10,7 +10,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
@@ -43,7 +43,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
@@ -76,7 +76,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
