@@ -12,6 +12,7 @@
 #include "TrafficMonitor.h"
 
 #define PLUGIN_UNSUPPORT_VERSION 0      //不被支持的插件版本
+#define PLUGIN_MAX_SUPPORT_VERSION 8     //支持的最高 API 版本
 
 CPluginManager::CPluginManager()
 {
@@ -80,7 +81,7 @@ void CPluginManager::LoadPlugins()
             continue;
         //检查插件版本
         int version = plugin_info.plugin->GetAPIVersion();
-        if (version <= PLUGIN_UNSUPPORT_VERSION)
+        if (version <= PLUGIN_UNSUPPORT_VERSION || version > PLUGIN_MAX_SUPPORT_VERSION)
         {
             plugin_info.state = PluginState::PS_VERSION_NOT_SUPPORT;
             continue;
@@ -416,15 +417,25 @@ void CPluginManager::ReplacePluginDrawTextFunction(HMODULE plgin_dll_module) noe
     auto* p_plugin_dll_module = reinterpret_cast<BYTE*>(plgin_dll_module);
 
     auto p_dos_header = reinterpret_cast<PIMAGE_DOS_HEADER>(plgin_dll_module);
+    if (p_dos_header->e_magic != IMAGE_DOS_SIGNATURE || p_dos_header->e_lfanew <= 0
+        || p_dos_header->e_lfanew > 0x100000)
+        return;
 
     auto p_image_nt_headers = reinterpret_cast<PIMAGE_NT_HEADERS>(
         p_plugin_dll_module + p_dos_header->e_lfanew);
+    if (p_image_nt_headers->Signature != IMAGE_NT_SIGNATURE)
+        return;
 
     auto p_optional_header = reinterpret_cast<PIMAGE_OPTIONAL_HEADER>(
         &p_image_nt_headers->OptionalHeader);
 
     auto import_table_offset =
         p_optional_header->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+    auto import_table_size =
+        p_optional_header->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size;
+    if (import_table_offset == 0 || import_table_size == 0
+        || import_table_offset > p_optional_header->SizeOfImage)
+        return;
     auto p_current_import_desc = reinterpret_cast<PIMAGE_IMPORT_DESCRIPTOR>(
         p_plugin_dll_module + import_table_offset);
 
@@ -551,6 +562,10 @@ void CPluginManager::ReloadPlugins()
 
 bool CPluginManager::CheckAndReloadPlugins()
 {
+    // Hold the lock across detection and reload: CCriticalSection is
+    // reentrant, so the nested locks in PluginFilesChanged/ReloadPlugins
+    // are fine, but the file state cannot change between the two steps.
+    CSingleLock lock(&m_cs, TRUE);
     if (!PluginFilesChanged())
         return false;
     ReloadPlugins();
