@@ -13,7 +13,7 @@ TrafficMonitor plugins to the future Rust core.
 ## How we port
 
 The C++ virtual-plugin ABI (`ITMPlugin` / `IPluginItem`) is replaced by a flat C ABI
-defined in [`abi/tm_plugin_abi.h`](abi/tm_plugin_abi.h). Every plugin exposes one
+defined in [`sdk/abi/tm_plugin_abi.h`](abi/tm_plugin_abi.h). Every plugin exposes one
 entry point returning a vtable. C++ plugins are compiled with
 `clang++ --target=wasm32-wasi`; Rust plugins compile natively to the same ABI.
 
@@ -48,7 +48,7 @@ compatible; if it fails, the host regressed.
 
 ## Reusable pipeline
 
-[`.github/workflows/plugin-gate.yml`](.github/workflows/plugin-gate.yml) is a reusable
+[`sdk/.github/workflows/plugin-gate.yml`](.github/workflows/plugin-gate.yml) is a reusable
 workflow. A plugin repository needs only:
 
 ```yaml
