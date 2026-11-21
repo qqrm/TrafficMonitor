@@ -1,0 +1,39 @@
+name: Plugin gate
+
+on:
+  workflow_call:
+    inputs:
+      plugin-dir:
+        description: Directory containing the plugin source
+        required: false
+        type: string
+        default: .
+      fixture:
+        description: Path to the deterministic JSON fixture
+        required: false
+        type: string
+        default: tests/fixture.json
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        with:
+          toolchain: stable
+          targets: wasm32-wasip1
+      - name: Build WASM plugin
+        shell: pwsh
+        run: ./scripts/build-plugin.ps1 -PluginDir '${{ inputs.plugin-dir }}'
+      - name: Validate ABI symbols
+        shell: pwsh
+        run: ./scripts/validate-plugin.ps1
+      - name: Record checksum
+        shell: pwsh
+        run: Get-FileHash artifacts/plugin.wasm -Algorithm SHA256 | Format-List
