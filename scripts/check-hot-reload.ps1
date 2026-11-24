@@ -23,6 +23,16 @@ if ($pm -notmatch 'IMAGE_DOS_SIGNATURE' -or $pm -notmatch 'IMAGE_NT_SIGNATURE') 
 if ($dlg -notmatch 'InvalidatePluginPointers' -or $taskbarH -notmatch 'InvalidatePluginPointers') {
     Fail 'UI cached plugin pointers are not invalidated after reload'
 }
+# The taskbar item order caches raw IPluginItem pointers in its default-order
+# vector. It must be rebuilt after every reload, or the next draw dereferences
+# an IPluginItem from the unloaded DLL (crash in CalculateWindowSize).
+$orderH = Get-Content (Join-Path $root 'TrafficMonitor\TaskbarItemOrderHelper.h') -Raw
+if ($orderH -notmatch 'RefreshItems') {
+    Fail 'taskbar item order has no RefreshItems entry point'
+}
+if ($dlg -notmatch 'item_order\.RefreshItems\(\)') {
+    Fail 'taskbar item order is not refreshed after plugin reload'
+}
 # No developer absolute paths in shipped sources
 $files = @('PluginManager.cpp', 'PluginManager.h', 'TrafficMonitorDlg.cpp', 'TaskBarDlg.h') | ForEach-Object { Join-Path (Join-Path $root 'TrafficMonitor') $_ }
 foreach ($f in $files) {

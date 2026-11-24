@@ -195,6 +195,10 @@ protected:
     //判断一个点在哪个显示项目的区域内，并保存到m_clicked_item
     void CheckClickedItem(CPoint point);
 
+    // Drop plugin-owned pointers cached by the main window before a plugin
+    // DLL is unloaded; otherwise mouse handlers dereference freed memory.
+    void InvalidatePluginPointers();
+
     //应用一个皮肤
     void ApplySkin(int skin_index);
 
