@@ -19,6 +19,19 @@ void CTaskbarItemOrderHelper::Init()
     }
 }
 
+void CTaskbarItemOrderHelper::RefreshItems()
+{
+    // A plugin reload unloads the DLL that owned every IPluginItem pointer in
+    // this vector. Rebuild it from the current plugin set and re-normalize the
+    // numeric order (plugin IDs are unchanged for an in-place reload).
+    m_all_item_in_default_order.clear();
+    for (const auto& item : theApp.m_plugins.AllDisplayItemsWithPlugins())
+    {
+        m_all_item_in_default_order.push_back(item);
+    }
+    NormalizeItemOrder();
+}
+
 std::vector<CommonDisplayItem> CTaskbarItemOrderHelper::GetAllDisplayItemsWithOrder() const
 {
     std::vector<CommonDisplayItem> items;

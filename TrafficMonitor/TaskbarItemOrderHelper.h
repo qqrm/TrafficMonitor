@@ -8,6 +8,10 @@ public:
 
     void Init();
 
+    // Rebuild the cached default order after plugins were reloaded. The cached
+    // items hold raw IPluginItem pointers into a DLL that has been unloaded.
+    void RefreshItems();
+
     //根据设定的顺序获取任务窗口每个显示项目
     std::vector<CommonDisplayItem> GetAllDisplayItemsWithOrder() const;
 

@@ -902,6 +902,15 @@ void CTrafficMonitorDlg::ApplySettings(COptionsDlg& optionsDlg)
     theApp.SaveGlobalConfig();
 }
 
+void CTrafficMonitorDlg::InvalidatePluginPointers()
+{
+    // The clicked item may point into an unloaded plugin DLL.
+    m_clicked_item = TDI_UP;
+    // The taskbar item order caches raw IPluginItem pointers as well; without
+    // rebuilding it, CalculateWindowSize() dereferences freed memory.
+    theApp.m_taskbar_data.item_order.RefreshItems();
+}
+
 void CTrafficMonitorDlg::SetItemPosition()
 {
     if (theApp.m_cfg_data.m_show_more_info)
@@ -1739,12 +1748,18 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
         {
             if (theApp.m_plugins.CheckAndReloadPlugins())
             {
+                // Plugins have been unloaded: every cached IPluginItem pointer
+                // is dangling now. Refresh the UI caches before any redraw.
+                InvalidatePluginPointers();
                 if (m_tBarDlg != nullptr)
                 {
                     m_tBarDlg->InvalidatePluginPointers();
                     m_tBarDlg->CalculateWindowSize();
                     m_tBarDlg->Invalidate(FALSE);
                 }
+                // New plugin instances did not receive the host settings at
+                // load time; send them so colours and options stay in sync.
+                theApp.SendSettingsToPlugin();
                 SetItemPosition();
                 Invalidate(FALSE);
             }
