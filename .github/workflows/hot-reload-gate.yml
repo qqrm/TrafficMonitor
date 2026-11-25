@@ -77,3 +77,8 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path TrafficMonitor/x64/Release/PluginManager.obj)) { throw 'PluginManager.obj missing' }
+
+      - name: Runtime hot-reload regression (3 cycles)
+        timeout-minutes: 8
+        shell: pwsh
+        run: ./scripts/test-hot-reload-runtime.ps1
